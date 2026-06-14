@@ -1,25 +1,18 @@
-from fastmcp import FastMCP
-import random
+from fastapi import FastAPI
+from app.database import engine, Base
+from app.api.routes import router
 
-mcp = FastMCP("Demo Server")
+# Create tables on startup
+Base.metadata.create_all(bind=engine)
 
-@mcp.tool
-def roll_dice(n_dice: int = 1)-> list[int]:
+app = FastAPI(
+    title       = "Student Expense Tracker API",
+    description = "Track your daily expenses as a student",
+    version     = "1.0.0",
+)
 
-    """ Roll n_dice 6-sided and return the results"""
+app.include_router(router)
 
-    return [random.randint(1,6) for _ in range(n_dice)]
-
-
-
-@mcp.tool
-def add_numbers(a: float , b: float)->float:
-
-    """ Add Two Numbers"""
-    return a+b
-
-if __name__== "__main__":
-    mcp.run()
-
-
-
+@app.get("/")
+def root():
+    return {"message": "Student Expense Tracker is running 🎓"}
