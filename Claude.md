@@ -1,52 +1,89 @@
-# MCP Server Setup Guide — FastMCP + Claude Desktop (Windows)
+# FastMCP + Claude Desktop Setup Guide (Windows)
 
-## Prerequisites
-
-| Tool | Install Command | Notes |
-|------|----------------|-------|
-| Python 3.10+ | [python.org](https://python.org) | Ensure added to PATH |
-| `uv` | `pip install uv` or [docs.astral.sh/uv](https://docs.astral.sh/uv) | Fast Python package manager |
-| Claude Desktop | [claude.ai/download](https://claude.ai/download) | Must be opened at least once |
+Complete setup guide for creating and connecting FastMCP servers with Claude Desktop on Windows.
 
 ---
 
-## Project Structure
+# 1. Requirements
 
-```
-D:\Python\MCP\
-└── YourProject\
-    ├── main.py          # Your MCP server code
-    ├── pyproject.toml   # Auto-created by uv
-    └── .venv\           # Auto-created by uv
-```
+Install these first:
+
+| Tool           | Download / Install                                      |
+| -------------- | ------------------------------------------------------- |
+| Python 3.10+   | https://python.org                                      |
+| uv             | https://docs.astral.sh/uv/getting-started/installation/ |
+| Claude Desktop | https://claude.ai/download                              |
 
 ---
 
-## Step 1 — Create Project
+# 2. Install uv
+
+### Option 1 — Recommended
+
+Open PowerShell:
 
 ```powershell
-mkdir D:\Python\MCP\YourProject
-cd D:\Python\MCP\YourProject
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Restart terminal.
+
+Check installation:
+
+```powershell
+uv --version
+```
+
+Find uv path:
+
+```powershell
+where.exe uv
+```
+
+Example output:
+
+```text
+C:\Users\YourName\.local\bin\uv.exe
+```
+
+---
+
+# 3. Create MCP Project
+
+```powershell
+mkdir D:\Python\MCP\Basic
+cd D:\Python\MCP\Basic
+
 uv init
+uv venv
+.venv\Scripts\activate
+
 uv add fastmcp
 ```
 
 ---
 
-## Step 2 — Write Your MCP Server (`main.py`)
+# 4. Create `main.py`
+
+Create `main.py`:
 
 ```python
 from fastmcp import FastMCP
 import random
 
-mcp = FastMCP("Your Server Name")
+mcp = FastMCP("Basic")
 
-@mcp.tool
+@mcp.tool()
+def hello(name: str) -> str:
+    """Say hello"""
+    return f"Hello {name}"
+
+@mcp.tool()
 def roll_dice(n_dice: int = 1) -> list[int]:
-    """Roll n_dice 6-sided dice and return the results"""
+    """Roll dice"""
     return [random.randint(1, 6) for _ in range(n_dice)]
 
-@mcp.tool
+@mcp.tool()
 def add_numbers(a: float, b: float) -> float:
     """Add two numbers"""
     return a + b
@@ -55,117 +92,137 @@ if __name__ == "__main__":
     mcp.run()
 ```
 
-### Key rules for tools:
-- Decorate with `@mcp.tool`
-- Always include a **docstring** — Claude uses it to understand the tool
-- Use **type hints** on all parameters and return values
-- Keep functions focused and single-purpose
-
 ---
 
-## Step 3 — Test the Server Locally
+# 5. Run MCP Server Locally
 
 ```powershell
 uv run main.py
 ```
 
-You should see the FastMCP banner and:
-```
-INFO  Starting MCP server '...' with transport 'stdio'
-```
-
-Press `Ctrl+C` to stop. If this works, the server is ready.
-
----
-
-## Step 4 — Install into Claude Desktop
-
-```powershell
-uv run fastmcp install claude-desktop main.py
-```
-
 Expected output:
-```
-Successfully installed 'Your Server Name' in Claude Desktop
-```
 
-### If you get `Claude Desktop config directory not found`:
-Claude Desktop hasn't been opened yet. Open it, sign in, close it, then retry.
-
-### If you get `Failed to install server: Expecting value: line 1 column 1 (char 0)`:
-The config file is empty or has a BOM encoding issue. Fix with:
-
-```powershell
-# Write a clean config manually (no BOM)
-$config = '{"mcpServers":{}}'
-[System.IO.File]::WriteAllText(
-    "$env:APPDATA\Claude\claude_desktop_config.json",
-    $config
-)
+```text
+INFO Starting MCP server 'Basic' with transport 'stdio'
 ```
 
-Then retry `uv run fastmcp install claude-desktop main.py`.
+Press:
+
+```text
+Ctrl + C
+```
+
+to stop.
 
 ---
 
-## Step 5 — Restart Claude Desktop
+# 6. Claude Desktop Setup
 
-1. Right-click the Claude icon in the **system tray**
-2. Click **Quit**
-3. Reopen Claude Desktop
-4. Go to **Settings (⚙) → Developer**
-5. Your server should appear with a ✅ green indicator
+Install Claude Desktop:
+
+https://claude.ai/download
+
+IMPORTANT:
+
+* Open Claude Desktop at least once
+* Login
+* Wait until chat UI fully loads
+* Close Claude Desktop
 
 ---
 
-## Manual Config (Alternative to `fastmcp install`)
+# 7. Open Claude Config
 
-Config file location:
-```
-C:\Users\<YourUsername>\AppData\Roaming\Claude\claude_desktop_config.json
-```
-
-Write it without BOM using PowerShell:
+PowerShell:
 
 ```powershell
-$config = @"
+notepad "$env:APPDATA\Claude\claude_desktop_config.json"
+```
+
+If file does not exist, Notepad will create it.
+
+---
+
+# 8. Add MCP Server Config
+
+Paste this:
+
+```json
 {
   "mcpServers": {
-    "my-server": {
-      "command": "C:\\Users\\<YourUsername>\\.local\\bin\\uv.exe",
+    "basic": {
+      "command": "C:\\Users\\YOUR_USERNAME\\.local\\bin\\uv.exe",
       "args": [
         "--directory",
-        "D:\\Python\\MCP\\YourProject",
+        "D:\\Python\\MCP\\Basic",
         "run",
         "main.py"
       ]
     }
   }
 }
-"@
-
-[System.IO.File]::WriteAllText(
-    "$env:APPDATA\Claude\claude_desktop_config.json",
-    $config
-)
 ```
 
-> ⚠️ Always use `[System.IO.File]::WriteAllText()` — PowerShell's `Out-File` adds a BOM that breaks JSON parsing.
+IMPORTANT:
+
+* Replace `YOUR_USERNAME`
+* JSON paths MUST use double backslashes `\\`
 
 ---
 
-## Adding Multiple Servers
+# 9. Restart Claude Desktop
+
+Completely close Claude Desktop:
+
+* System tray → Right click Claude → Quit
+
+Then reopen Claude Desktop.
+
+---
+
+# 10. Verify MCP Server
+
+In Claude Desktop ask:
+
+```text
+What tools are available?
+```
+
+or
+
+```text
+Call the hello tool
+```
+
+If successful, Claude will detect your MCP tools.
+
+---
+
+# 11. Multiple MCP Servers
+
+Example:
 
 ```json
 {
   "mcpServers": {
     "basic": {
-      "command": "C:\\Users\\SVA_Delta\\.local\\bin\\uv.exe",
-      "args": ["--directory", "D:\\Python\\MCP\\Basic", "run", "main.py"]
+      "command": "C:\\Users\\YourName\\.local\\bin\\uv.exe",
+      "args": [
+        "--directory",
+        "D:\\Python\\MCP\\Basic",
+        "run",
+        "main.py"
+      ]
     },
-    "another-server": {
-      "command": "C:\\Users\\SVA_Delta\\.local\\bin\\uv.exe",
-      "args": ["--directory", "D:\\Python\\MCP\\AnotherProject", "run", "main.py"]
+
+    "weather": {
+      "command": "C:\\Users\\YourName\\.local\\bin\\uv.exe",
+      "args": [
+        "--directory",
+        "D:\\Python\\MCP\\Weather",
+        "run",
+        "main.py"
+      ]
     }
   }
 }
@@ -173,65 +230,231 @@ $config = @"
 
 ---
 
-## Troubleshooting
+# 12. FastMCP CLI Commands
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Claude Desktop config directory not found` | Claude Desktop never opened | Open Claude Desktop once, sign in, close it |
-| `Expecting value: line 1 column 1 (char 0)` | Config file is empty or has BOM | Use `WriteAllText()` to rewrite clean JSON |
-| Server shows red ❌ in Developer settings | `uv.exe` path wrong or `main.py` has errors | Run `uv run main.py` manually to see errors |
-| Tools don't appear in Claude | Server not restarted after install | Fully quit Claude Desktop via system tray, reopen |
-| `uv` not found | uv not installed or not in PATH | Run `pip install uv` or check [astral.sh/uv](https://docs.astral.sh/uv) |
+## Run Server
+
+```powershell
+uv run main.py
+```
+
+## Run via FastMCP
+
+```powershell
+uv run fastmcp run main.py
+```
+
+## Inspector UI
+
+```powershell
+uv run fastmcp dev inspector main.py
+```
 
 ---
 
-## Quick Reference
+# 13. Troubleshooting
+
+## Error:
+
+```text
+Unknown command "main.py"
+```
+
+Use:
 
 ```powershell
-# Find uv path
-where.exe uv
+uv run fastmcp dev inspector main.py
+```
 
-# Test server runs
+NOT:
+
+```powershell
+uv run fastmcp dev main.py
+```
+
+---
+
+## Error:
+
+```text
+Claude Desktop config directory not found
+```
+
+Fix:
+
+* Open Claude Desktop once
+* Login
+* Close Claude
+* Retry
+
+---
+
+## Error:
+
+```text
+Expecting value: line 1 column 1 (char 0)
+```
+
+Config file broken or empty.
+
+Fix:
+
+```powershell
+$config = '{"mcpServers":{}}'
+
+[System.IO.File]::WriteAllText(
+"$env:APPDATA\Claude\claude_desktop_config.json",
+$config
+)
+```
+
+---
+
+## Error:
+
+```text
+uv not found
+```
+
+Install uv again:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+---
+
+## Error:
+
+```text
+Server shows red X
+```
+
+Usually:
+
+* Wrong uv.exe path
+* Broken JSON
+* Python error in main.py
+
+Test manually:
+
+```powershell
 uv run main.py
+```
 
-# Install to Claude Desktop
-uv run fastmcp install claude-desktop main.py
+---
 
-# Check config file
-cat "$env:APPDATA\Claude\claude_desktop_config.json"
+# 14. Useful Commands
 
-# Open config folder in Explorer
+## Find uv path
+
+```powershell
+where.exe uv
+```
+
+---
+
+## Open Claude config folder
+
+```powershell
 explorer "$env:APPDATA\Claude"
 ```
 
 ---
 
-## FastMCP Tool Types
+## View config file
+
+```powershell
+cat "$env:APPDATA\Claude\claude_desktop_config.json"
+```
+
+---
+
+## Activate virtual environment
+
+```powershell
+.venv\Scripts\activate
+```
+
+---
+
+## Deactivate virtual environment
+
+```powershell
+deactivate
+```
+
+---
+
+# 15. Recommended Project Structure
+
+```text
+D:\Python\MCP\
+│
+├── Basic\
+│   ├── main.py
+│   ├── pyproject.toml
+│   ├── uv.lock
+│   └── .venv\
+│
+├── Weather\
+│   ├── main.py
+│   └── .venv\
+```
+
+---
+
+# 16. Best Practices
+
+* Always use type hints
+* Always add docstrings
+* Keep tools small and focused
+* Test with `uv run main.py` before Claude integration
+* Use separate folders for separate MCP servers
+
+---
+
+# 17. Example Tool Patterns
+
+## Simple Tool
 
 ```python
-# Basic tool
-@mcp.tool
-def my_tool(param: str) -> str:
-    """Description Claude will see"""
-    return result
+@mcp.tool()
+def greet(name: str) -> str:
+    """Greet a user"""
+    return f"Hello {name}"
+```
 
-# Tool with optional params
-@mcp.tool
+---
+
+## Optional Parameters
+
+```python
+@mcp.tool()
 def greet(name: str, formal: bool = False) -> str:
-    """Greet a person"""
-    return f"Good day, {name}." if formal else f"Hey {name}!"
+    """Greeting tool"""
+    return f"Good day {name}" if formal else f"Hey {name}"
+```
 
-# Tool returning structured data
-@mcp.tool
-def get_stats(numbers: list[float]) -> dict:
-    """Return basic statistics for a list of numbers"""
+---
+
+## Structured Output
+
+```python
+@mcp.tool()
+def stats(numbers: list[float]) -> dict:
+    """Return statistics"""
     return {
         "min": min(numbers),
         "max": max(numbers),
-        "avg": sum(numbers) / len(numbers)
+        "avg": sum(numbers)/len(numbers)
     }
 ```
 
 ---
 
-*FastMCP docs: [gofastmcp.com](https://gofastmcp.com) | Claude Desktop: [claude.ai/download](https://claude.ai/download)*
+# References
+
+* FastMCP: https://gofastmcp.com
+* uv Docs: https://docs.astral.sh/uv/
+* Claude Desktop: https://claude.ai/download
